@@ -50,3 +50,48 @@ def parse_config_file(cfgfile):
     blocks.append(block)
 
     return blocks
+
+
+def create_neural_network(blocks):
+    """The config file - cfg/yolov3.cfg has the following types of blocks, net, convolution, shortcut, upsample, route, yolo
+        When values are set, they must be done so keeping in mind, the types of blocks displayed above.
+    """
+
+    previous_filters = 3  # starts out as 3, since we have a RGB image with 3 colour channels
+
+    for block in blocks:
+        module=nn.Sequential()
+        if block[type]=="net":
+            continue
+        # Adding convolutional layer
+        elif block[type]=="convolutional":
+            activation=block["activation"]
+            kernel_size=block["size"]
+            pad=block["pad"]
+            stride=block["stride"]
+            filters=block["filter"]
+
+            # Generally, bias does not exist in layers that have batch normalization.
+            # This is so because batch normalization inherently takes care of the necessary bias factor.
+            # Thus, we check below if the block defined has batch normalization and make a decision on bias accordingly.
+
+            if "batch_normalize" in block.keys():
+                bias=False
+                batch_normalization=block["batch_normalize"]
+            else:
+                bias=True
+                batch_normalization=0
+
+            # Adding layers now
+            conv_layer=nn.Conv2d(previous_filters, filters, kernel_size, stride, pad, bias=bias)
+            module.add_module(conv_layer)
+
+            # Add Batch Normalization
+            if batch_normalization:
+                bn_layer=nn.BatchNorm2d(filters)
+                module.add_module(bn_layer)
+
+            # Add Activation layer
+            # Activation layer can be either a Leaky-Relu layer or a linear activation layer.
+            if activation=="leaky":
+                activation_layer=nn.LeakyReLU(0.1, inplace=True)
